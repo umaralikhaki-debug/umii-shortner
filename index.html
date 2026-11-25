@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exact 88-Char 3-Line Link</title>
+  <style>
+    body { font-family: sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; background: #f4f4f9; }
+    input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; font-size: 15px; }
+    button { background: #2ea44f; color: white; font-weight: bold; border: none; cursor: pointer; }
+    button:hover { background: #2c974b; }
+    #output { background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #ddd; margin-top: 15px; font-family: monospace; white-space: pre-wrap; word-break: break-all; font-size: 14px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+  <h2>Exact 88-Char 3-Line Link</h2>
+  <input type="text" id="longUrl" placeholder="Apna link yahan paste karein..." />
+  <button onclick="processLink()">Generate (Exact 88 Chars, 3 Lines)</button>
+
+  <div id="output">Yahan result aayega...</div>
+  <button onclick="copyResult()" style="background:#0366d6;">Copy Result</button>
+
+  <script>
+    const TARGET_LENGTH = 88; // Example link ki exact length: 88 characters
+
+    function shortenWithJsonp(apiBase, url) {
+      return new Promise((resolve, reject) => {
+        const callbackName = "cb_" + Math.random().toString(36).substring(2, 10);
+        const script = document.createElement("script");
+
+        window[callbackName] = function (data) {
+          delete window[callbackName];
+          document.body.removeChild(script);
+          if (data && data.shorturl) {
+            resolve(data.shorturl);
+          } else {
+            reject("Failed");
+          }
+        };
+
+        script.onerror = function () {
+          delete window[callbackName];
+          document.body.removeChild(script);
+          reject("Network error");
+        };
+
+        script.src = `${apiBase}?format=json&callback=${callbackName}&url=${encodeURIComponent(url)}`;
+        document.body.appendChild(script);
+      });
+    }
+
+    // String ko exact 88 characters ka banana (na kam, na zyada)
+    function toExactLength(str, targetLen) {
+      if (str.length > targetLen) {
+        return str.slice(0, targetLen);
+      }
+      if (str.length < targetLen) {
+        const padChar = str.includes("?") ? "&p=" : "?p=";
+        let result = str + padChar;
+        while (result.length < targetLen) {
+          result += "x";
+        }
+        return result.slice(0, targetLen);
+      }
+      return str;
+    }
+
+    // Exact 88 characters ko 3 lines mein todna
+    function toThreeLines(exactStr) {
+      const part = Math.ceil(exactStr.length / 3);
+      const line1 = exactStr.slice(0, part);
+      const line2 = exactStr.slice(part, part * 2);
+      const line3 = exactStr.slice(part * 2);
+      return `${line1}\n${line2}\n${line3}`;
+    }
+
+    async function processLink() {
+      let url = document.getElementById("longUrl").value.trim();
+      const output = document.getElementById("output");
+
+      if (!url) {
+        output.innerText = "Pehle koi link paste karein!";
+        return;
+      }
+
+      if (!/^https?:\/\//i.test(url)) {
+        url = "https://" + url;
+      }
+
+      output.innerText = "Processing...";
+
+      let shortUrl = url;
+      try {
+        try {
+          shortUrl = await shortenWithJsonp("https://is.gd/create.php", url);
+        } catch (e1) {
+          shortUrl = await shortenWithJsonp("https://v.gd/create.php", url);
+        }
+      } catch (e) {
+        shortUrl = url;
+      }
+
+      const exact88 = toExactLength(shortUrl, TARGET_LENGTH);
+      output.innerText = toThreeLines(exact88);
+    }
+
+    function copyResult() {
+      const text = document.getElementById("output").innerText;
+      navigator.clipboard.writeText(text);
+      alert("Result copy ho gaya!");
+    }
+  </script>
+
+</body>
+</html>
