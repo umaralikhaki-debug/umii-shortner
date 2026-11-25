@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>88-Char 3-Line Link Formatter</title>
+  <style>
+    body { font-family: sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; background: #f4f4f9; }
+    input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; font-size: 15px; }
+    button { background: #2ea44f; color: white; font-weight: bold; border: none; cursor: pointer; }
+    button:hover { background: #2c974b; }
+    #output { background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #ddd; margin-top: 15px; font-family: monospace; white-space: pre-wrap; word-break: break-all; font-size: 14px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+  <h2>3-Line Link Shortener / Formatter</h2>
+  <input type="text" id="longUrl" placeholder="Apna link yahan paste karein..." />
+  <button onclick="processLink()">Generate (Max 88 Chars, 3 Lines)</button>
+
+  <div id="output">Yahan result aayega...</div>
+  <button onclick="copyResult()" style="background:#0366d6;">Copy Result</button>
+
+  <script>
+    const MAX_SIZE = 88; // Example link size: 88 characters
+
+    function shortenWithJsonp(apiBase, url) {
+      return new Promise((resolve, reject) => {
+        const callbackName = "cb_" + Math.random().toString(36).substring(2, 10);
+        const script = document.createElement("script");
+
+        window[callbackName] = function (data) {
+          delete window[callbackName];
+          document.body.removeChild(script);
+          if (data && data.shorturl) {
+            resolve(data.shorturl);
+          } else {
+            reject("Failed");
+          }
+        };
+
+        script.onerror = function () {
+          delete window[callbackName];
+          document.body.removeChild(script);
+          reject("Network error");
+        };
+
+        script.src = `${apiBase}?format=json&callback=${callbackName}&url=${encodeURIComponent(url)}`;
+        document.body.appendChild(script);
+      });
+    }
+
+    function toThreeLines(text) {
+      const part = Math.ceil(text.length / 3);
+      const l1 = text.slice(0, part);
+      const l2 = text.slice(part, part * 2);
+      const l3 = text.slice(part * 2);
+      return `${l1}\n${l2}\n${l3}`;
+    }
+
+    async function processLink() {
+      let url = document.getElementById("longUrl").value.trim();
+      const output = document.getElementById("output");
+
+      if (!url) {
+        output.innerText = "Pehle koi link paste karein!";
+        return;
+      }
+
+      if (!/^https?:\/\//i.test(url)) {
+        url = "https://" + url;
+      }
+
+      // Agar link 88 characters se lamba hai to short karega
+      if (url.length > MAX_SIZE) {
+        output.innerText = "Link 88 characters se lamba hai, short kar raha hai...";
+        try {
+          try {
+            url = await shortenWithJsonp("https://is.gd/create.php", url);
+          } catch (e1) {
+            url = await shortenWithJsonp("https://v.gd/create.php", url);
+          }
+        } catch (e) {
+          output.innerText = "Error: Link short nahi ho saka.";
+          return;
+        }
+      }
+
+      // Agar abhi bhi 88 se zyada hai to 88 characters tak trim karega
+      const sizedText = url.slice(0, MAX_SIZE);
+      output.innerText = toThreeLines(sizedText);
+    }
+
+    function copyResult() {
+      const text = document.getElementById("output").innerText;
+      navigator.clipboard.writeText(text);
+      alert("Result copy ho gaya!");
+    }
+  </script>
+
+</body>
+</html>
