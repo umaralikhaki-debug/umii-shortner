@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Link Shortener</title>
+  <style>
+    body { font-family: sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; background: #f4f4f9; }
+    input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; font-size: 15px; }
+    button { background: #2ea44f; color: white; font-weight: bold; border: none; cursor: pointer; }
+    button:hover { background: #2c974b; }
+    #output { background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #ddd; margin-top: 15px; font-family: monospace; word-break: break-all; font-size: 15px; }
+  </style>
+</head>
+<body>
+
+  <h2>Link Shortener</h2>
+  <input type="text" id="longUrl" placeholder="Apna lamba link yahan paste karein..." />
+  <button onclick="shortenLink()">Link Short Karein</button>
+
+  <div id="output">Yahan chhota link aayega...</div>
+  <button onclick="copyResult()" style="background:#0366d6;">Copy Short Link</button>
+
+  <script>
+    // JSONP helper (bina CORS error ke seedha browser se chalta hai)
+    function shortenWithJsonp(apiBase, url) {
+      return new Promise((resolve, reject) => {
+        const callbackName = "cb_" + Math.random().toString(36).substring(2, 10);
+        const script = document.createElement("script");
+
+        window[callbackName] = function (data) {
+          delete window[callbackName];
+          document.body.removeChild(script);
+          if (data && data.shorturl) {
+            resolve(data.shorturl);
+          } else {
+            reject("Failed");
+          }
+        };
+
+        script.onerror = function () {
+          delete window[callbackName];
+          document.body.removeChild(script);
+          reject("Network error");
+        };
+
+        script.src = `${apiBase}?format=json&callback=${callbackName}&url=${encodeURIComponent(url)}`;
+        document.body.appendChild(script);
+      });
+    }
+
+    async function shortenLink() {
+      let longUrl = document.getElementById("longUrl").value.trim();
+      const output = document.getElementById("output");
+
+      if (!longUrl) {
+        output.innerText = "Pehle koi link paste karein!";
+        return;
+      }
+
+      // Agar link ke shuru mein http/https nahi hai to khud laga dega
+      if (!/^https?:\/\//i.test(longUrl)) {
+        longUrl = "https://" + longUrl;
+      }
+
+      output.innerText = "Short link ban raha hai...";
+
+      try {
+        // Pehle is.gd try karega (JSONP se bina CORS block ke)
+        const shortUrl = await shortenWithJsonp("https://is.gd/create.php", longUrl);
+        output.innerText = shortUrl;
+      } catch (e1) {
+        try {
+          // Agar is.gd na chale to v.gd try karega
+          const shortUrl2 = await shortenWithJsonp("https://v.gd/create.php", longUrl);
+          output.innerText = shortUrl2;
+        } catch (e2) {
+          output.innerText = "Error: Link short nahi ho saka, internet check karein.";
+        }
+      }
+    }
+
+    function copyResult() {
+      const text = document.getElementById("output").innerText;
+      navigator.clipboard.writeText(text);
+      alert("Short link copy ho gaya!");
+    }
+  </script>
+
+</body>
+</html>
