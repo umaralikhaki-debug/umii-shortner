@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3-Line Link Shortener</title>
+  <style>
+    body { font-family: sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; background: #f4f4f9; }
+    input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
+    button { background: #2ea44f; color: white; font-weight: bold; border: none; cursor: pointer; }
+    button:hover { background: #2c974b; }
+    #output { background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #ddd; margin-top: 15px; font-family: monospace; white-space: pre-wrap; word-break: break-all; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+  <h2>3-Line Link Shortener</h2>
+  <input type="text" id="longUrl" placeholder="Apna lamba link yahan paste karein..." />
+  <button onclick="processLink()">Short Karein (Exact 3 Lines)</button>
+  
+  <div id="output">Yahan 3 lines mein result aayega...</div>
+  <button onclick="copyResult()" style="background:#0366d6;">Copy Result</button>
+
+  <script>
+    function splitIntoThreeLines(text) {
+      const len = text.length;
+      if (len < 3) {
+        return `${text}\n \n `;
+      }
+      const partSize = Math.ceil(len / 3);
+      const line1 = text.slice(0, partSize);
+      const line2 = text.slice(partSize, partSize * 2);
+      const line3 = text.slice(partSize * 2);
+      return `${line1}\n${line2}\n${line3}`;
+    }
+
+    async function tryShorten(url) {
+      // 1. Try is.gd
+      try {
+        const res1 = await fetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`);
+        if (res1.ok) {
+          const txt = (await res1.text()).trim();
+          if (txt.startsWith('http')) return txt;
+        }
+      } catch (e) {}
+
+      // 2. Try TinyURL
+      try {
+        const res2 = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`);
+        if (res2.ok) {
+          const txt = (await res2.text()).trim();
+          if (txt.startsWith('http')) return txt;
+        }
+      } catch (e) {}
+
+      return null;
+    }
+
+    async function processLink() {
+      const urlInput = document.getElementById('longUrl').value.trim();
+      const output = document.getElementById('output');
+
+      if (!urlInput) {
+        output.innerText = "Pehle koi link paste karein!\n \n ";
+        return;
+      }
+
+      output.innerText = "Processing...\n \n ";
+
+      const shortUrl = await tryShorten(urlInput);
+      const finalText = shortUrl || urlInput;
+      output.innerText = splitIntoThreeLines(finalText);
+    }
+
+    function copyResult() {
+      const text = document.getElementById('output').innerText;
+      navigator.clipboard.writeText(text);
+      alert("3-Line link copy ho gaya hai!");
+    }
+  </script>
+
+</body>
+</html>
